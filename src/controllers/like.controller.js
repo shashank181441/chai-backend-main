@@ -97,7 +97,7 @@ const getLikedVideos = asyncHandler(async (req, res) => {
     if (!userId) {
         throw new ApiError(401, "Not authorized to get liked videos. Must be logged in")
     }
-    const likedVids = await Like.findMany({
+    const likedVids = await Like.find({
         likedBy: userId,
         video: { $exists: true }
     })
@@ -113,7 +113,7 @@ const getLikedVideos = asyncHandler(async (req, res) => {
         throw new ApiError(400, "No liked Videos found")
     }
 
-    return res.status(200).json(new ApiResponse(200, "Got all liked Videos Successfully"))
+    return res.status(200).json(new ApiResponse(200, likedVids, "Got all liked Videos Successfully"))
 
 })
 

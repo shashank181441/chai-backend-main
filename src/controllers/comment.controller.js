@@ -90,7 +90,8 @@ const addComment = asyncHandler(async (req, res) => {
     // TODO: add a comment to a video
     // todos: check if user logged in or not
 
-    const { content } = req.body
+    const { content } = await req.body
+    console.log(req.body, content);
     if (!content) throw new ApiError(400, "Content is important")
     const { videoId } = req.params
     const userId = req.user._id
