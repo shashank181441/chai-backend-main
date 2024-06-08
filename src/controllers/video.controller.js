@@ -8,9 +8,52 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js"
 
 
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
-    //TODO: get all videos based on query, sort, pagination
-})
+    const { page = 1, limit = 10, query, sortBy = 'createdAt', sortType = 'desc', userId } = req.query;
+
+    // Define the sort order
+    const sortOrder = sortType === 'desc' ? -1 : 1;
+
+    // Construct the match stage
+    const matchStage = { isPublished: true };
+
+    if (query) {
+        matchStage.$text = { $search: query };
+    }
+
+    if (userId) {
+        matchStage.owner = userId;
+    }
+
+    // Define the aggregation pipeline
+    const pipeline = [
+        { $match: matchStage },
+        {
+            $lookup: {
+                from: 'users', // Name of the user collection
+                localField: 'owner', // Field in the video collection
+                foreignField: '_id', // Field in the user collection
+                as: 'ownerDetails' // Output array field
+            }
+        },
+        { $unwind: '$ownerDetails' },
+        { $sort: { [sortBy]: sortOrder } },
+        { $skip: (page - 1) * limit },
+        { $limit: parseInt(limit, 10) }
+    ];
+
+    try {
+        const allVideos = await Video.aggregate(pipeline);
+
+        if (!allVideos || allVideos.length === 0) {
+            throw new ApiError(400, "Videos not found");
+        }
+
+        return res.status(200).json(new ApiResponse(200, allVideos, "Videos fetched successfully"));
+    } catch (error) {
+        return res.status(500).json(new ApiError(500, error.message));
+    }
+});
+
 
 const publishAVideo = asyncHandler(async (req, res) => {
     const { title, description } = req.body
@@ -52,10 +95,17 @@ const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     //TODO: get video by id
 
-    const video = await Video.findById(videoId)
+    const video = await Video.findByIdAndUpdate(
+        videoId,
+        { $inc: { views: 1 } }, // Increment the views by 1
+        { new: true } // Return the updated document
+    ).populate('owner', 'username fullName avatar'); // Populate owner details
+
     if (!video) throw new ApiError(400, "No video found")
 
-    return res.status(200).json(200, video, "Video fetched successfully")
+    
+
+    return res.status(200).json(new ApiResponse(200, video, "Video fetched successfully"))
 
 })
 
