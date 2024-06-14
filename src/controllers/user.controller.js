@@ -364,17 +364,20 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         throw new ApiError(400, "username is missing")
     }
 
+    const isObjectId = mongoose.Types.ObjectId.isValid(username);
+    const matchStage = isObjectId
+        ? { _id: new mongoose.Types.ObjectId(username) }
+        : { username: username?.toLowerCase() };
+
     const channel = await User.aggregate([
         {
-            $match: {
-                username: username?.toLowerCase()
-            }
+            $match: matchStage
         },
         {
             $lookup: {
                 from: "subscriptions",
                 localField: "_id",
-                foreignField: "channel",
+                foreignField: "channel", 
                 as: "subscribers"
             }
         },

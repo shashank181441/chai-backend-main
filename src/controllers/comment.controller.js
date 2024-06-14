@@ -30,6 +30,9 @@ const getVideoComments = asyncHandler(async (req, res) => {
             },
         },
         {
+            $unwind: "$owner",
+        },
+        {
             $lookup: {
                 from: "likes",
                 localField: "_id",
@@ -39,18 +42,9 @@ const getVideoComments = asyncHandler(async (req, res) => {
         },
         {
             $addFields: {
-                likesCount: {
-                    $size: "$likes",
-                },
-                owner: {
-                    $first: "$owner",
-                },
+                likesCount: { $size: "$likes" },
                 isLiked: {
-                    $cond: {
-                        if: { $in: [req.user?._id, "$likes.likedBy"] },
-                        then: true,
-                        else: false
-                    }
+                    $in: [new mongoose.Types.ObjectId(req.user?._id), "$likes.likedBy"]
                 }
             },
         },
@@ -63,10 +57,16 @@ const getVideoComments = asyncHandler(async (req, res) => {
                     username: 1,
                     fullName: 1,
                     avatar: 1,
+                    _id: 1
                 },
                 isLiked: 1
             },
         },
+        {
+            $sort: {
+                createdAt: -1 // Sort by createdAt in descending order
+            }
+        }
     ]);
 
     const options = {
@@ -74,15 +74,13 @@ const getVideoComments = asyncHandler(async (req, res) => {
         limit: parseInt(limit, 10),
     };
 
-    const comments = await Comment.aggregatePaginate(
-        commentsAggregate,
-        options
-    );
+    const comments = await Comment.aggregatePaginate(commentsAggregate, options);
 
     return res
         .status(200)
         .json(new ApiResponse(200, comments, "Comments fetched successfully"));
 });
+
 
 
 
@@ -104,6 +102,7 @@ const addComment = asyncHandler(async (req, res) => {
     if (!commentpost) {
         throw new ApiError(400, "Error while uploading comment")
     }
+
     return res.status(200).json(new ApiResponse(200,
         commentpost
         , "Comment posted successfully"))

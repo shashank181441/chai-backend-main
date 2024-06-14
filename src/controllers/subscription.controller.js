@@ -8,6 +8,7 @@ import { asyncHandler } from "../utils/asyncHandler.js"
 
 const toggleSubscription = asyncHandler(async (req, res) => {
     const { channelId } = req.params
+    console.log(channelId) 
     // TODO: toggle subscription
 
     const userId = req.user._id
